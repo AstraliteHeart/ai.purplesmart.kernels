@@ -1,0 +1,33 @@
+[kernels]
+
+  [[kernels.kernel]]
+    name = "emoji.v1.kernel.Emoji"
+    num_replicas = 1
+    max_concurrent_queries = 4
+
+    [kernels.kernel.resources]
+      cpu = 0.1
+
+  [[kernels.kernel]]
+    name = "generate.v1.kernel.Generate"
+    num_replicas = 1
+    max_concurrent_queries = 4
+
+    [kernels.kernel.resources]
+      gpu = 0.4
+
+  [[kernels.kernel]]
+    name = "tts.v1.kernel.TTS"
+    num_replicas = 1
+    max_concurrent_queries = 4
+
+    [kernels.kernel.resources]
+      gpu = 0.01
+    
+  [[kernels.kernel]]
+    name = "tokenizer.v1.kernel.Tokenizer"
+    num_replicas = 1
+    max_concurrent_queries = 4
+
+    [kernels.kernel.resources]
+      gpu = 0.01
