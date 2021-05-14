@@ -16,11 +16,11 @@ import toml
 from aiohttp import web
 from autobahn.asyncio.component import Component, run
 from dotenv import load_dotenv
+from furl import furl
 from ray import serve
 from redis import client
 
 from tui import TUI
-
 
 load_dotenv()
 WS_ENDPOINT = os.getenv("WS_ENDPOINT")
@@ -55,7 +55,7 @@ def init(
 
     backend_class.options(
         name=route,
-        route_prefix='/' + route,
+        route_prefix="/" + route,
         ray_actor_options=ray_actor_options,
         num_replicas=num_replicas,
         max_concurrent_queries=max_concurrent_queries,
@@ -74,9 +74,12 @@ def run_in_executor(f):
 
     return inner
 
+
 def _try_assign_replica(self, query):
-    raise ValueError('_try_assign_replica')
-#serve.router.ReplicaSet._try_assign_replica = _try_assign_replica    
+    raise ValueError("_try_assign_replica")
+
+
+# serve.router.ReplicaSet._try_assign_replica = _try_assign_replica
 
 component = Component(
     transports=[
@@ -108,15 +111,19 @@ def override():
 
 
 class Client:
-    def __init__(self) -> None:
+    def __init__(self, user: str, visibility: str) -> None:
         self.client = None
         self.tui = None
+        self.user = user
+        self.visibility = visibility
 
+    """
     async def handle_request(self, request):
         # Offload the computation to our Ray Serve backend.
         my_handle = self.client.get_handle("score/v1")
         result = await my_handle.remote("dummy input")
         return web.Response(text=result)
+    """
 
     def init_client(self, gpus):
         gpus = [int(gpu.strip()) for gpu in gpus.split(",")]
@@ -236,7 +243,7 @@ class Client:
                     endpoint_data = []
                     for agent, agent_data in data.items():
                         endpoint_data.append(agent_data.dict())
-                    heartbeat_data[endpoint] = endpoint_data                
+                    heartbeat_data[endpoint] = endpoint_data
                 logging.debug("Heartbeat: %s", resources_by_endpoint)
 
                 session.publish(
@@ -245,6 +252,9 @@ class Client:
                         "node": NODE_ID,
                         "hostname": HOSTNAME,
                         "resources": heartbeat_data,
+                        "visibility": self.visibility,
+                        "user": self.user,
+                        "heartbeat": 10.0
                     },
                 )
 
@@ -258,7 +268,7 @@ class Client:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process some integers.")
+    parser = argparse.ArgumentParser(description="PurpleSmart.ai client.")
     parser.add_argument("--crossbar_server", default=True, action="store_true")
     parser.add_argument(
         "--no-crossbar_server", dest="crossbar-server", action="store_false"
@@ -268,14 +278,30 @@ if __name__ == "__main__":
     parser.add_argument(
         "--disable-tui", dest="disable_tui", action="store_true", default=False
     )
+    parser.add_argument("--app-url", dest="app_url")
+
+    parser.add_argument(
+        "--visibility",
+        dest="visibility",
+        choices=["public", "private", "unlisted"],
+        default="unlisted",
+    )
+
+    parser.add_argument("--user", dest="user")
+
     args = parser.parse_args()
 
-    client = Client()
+    client = Client(args.user, args.visibility)
 
     if not args.disable_tui:
         client.start_tui()
     try:
         client.init_client(args.gpu)
+
+        if args.app_url:
+            app_url = furl(args.app_url).add({"kernel": NODE_ID})
+            print(f"Application url: {app_url}")
+
         client.init_modules(args.config)
         if args.crossbar_server:
             client.init_ws()
