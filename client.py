@@ -26,6 +26,7 @@ load_dotenv()
 WS_ENDPOINT = os.getenv("WS_ENDPOINT")
 NODE_ID = uuid.getnode()
 HOSTNAME = socket.gethostname()
+KERNEL_ID = uuid.uuid4()
 
 
 def init(
@@ -117,20 +118,17 @@ class Client:
         self.user = user
         self.visibility = visibility
 
-    """
-    async def handle_request(self, request):
-        # Offload the computation to our Ray Serve backend.
-        my_handle = self.client.get_handle("score/v1")
-        result = await my_handle.remote("dummy input")
-        return web.Response(text=result)
-    """
-
     def init_client(self, gpus):
         gpus = [int(gpu.strip()) for gpu in gpus.split(",")]
         if gpus:
             py3nvml.grab_gpus(len(gpus), gpu_fraction=0, gpu_select=gpus)
 
-        ray.init(num_gpus=len(gpus), configure_logging=False, include_dashboard=False)
+        ray.init(
+            num_gpus=len(gpus),
+            configure_logging=False,
+            include_dashboard=False,            
+            _redis_max_memory=50 * 1024 * 1024,
+        )
 
         import counter
 
@@ -254,7 +252,8 @@ class Client:
                         "resources": heartbeat_data,
                         "visibility": self.visibility,
                         "user": self.user,
-                        "heartbeat": 10.0
+                        "kernel": KERNEL_ID,
+                        "heartbeat": 10.0,
                     },
                 )
 
@@ -299,7 +298,7 @@ if __name__ == "__main__":
         client.init_client(args.gpu)
 
         if args.app_url:
-            app_url = furl(args.app_url).add({"kernel": NODE_ID})
+            app_url = furl(args.app_url).add({"kernel": KERNEL_ID})
             print(f"Application url: {app_url}")
 
         client.init_modules(args.config)
