@@ -95,7 +95,6 @@ pytz==2021.1
 PyWavelets==1.1.1
 pyworld==0.3.0
 PyYAML==5.4.1
-ray @ https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-2.0.0.dev0-cp38-cp38-win_amd64.whl
 redis==3.5.3
 regex==2021.4.4
 requests==2.25.1
