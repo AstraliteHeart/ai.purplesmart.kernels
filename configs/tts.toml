@@ -1,0 +1,9 @@
+[kernels]
+
+  [[kernels.kernel]]
+    name = "tts.v1.kernel.TTS"
+    num_replicas = 1
+    max_concurrent_queries = 4
+
+    [kernels.kernel.resources]
+      gpu = 0.05

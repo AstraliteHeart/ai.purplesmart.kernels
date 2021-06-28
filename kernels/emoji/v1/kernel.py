@@ -19,7 +19,6 @@ def top_elements(array, k):
     return ind[np.argsort(array[ind])][::-1]
 
 
-@serve.deployment(name="emoji", version="1")
 class Emoji(runner.Runner):
     name = "emoji"
 

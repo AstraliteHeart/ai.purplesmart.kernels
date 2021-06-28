@@ -44,7 +44,6 @@ def run_in_executor(f):
     return inner
 
 
-@serve.deployment(name="generate", version="1", route_prefix="/generate")
 class Generate(runner.Runner):
     name = "generation"
 

@@ -17,7 +17,6 @@ def run_in_executor(f):
 
     return inner
 
-@serve.deployment(name="tokenizer", version="1")
 class Tokenizer(runner.Runner):
     name = 'tokenizer'
 

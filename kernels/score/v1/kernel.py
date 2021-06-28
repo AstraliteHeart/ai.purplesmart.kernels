@@ -6,7 +6,6 @@ from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
 
 MODEL_CARD = "microsoft/DialogRPT-human-vs-rand"
 
-@serve.deployment(name="score", version="1")
 class Score(runner.Runner):
     name = "score"
 

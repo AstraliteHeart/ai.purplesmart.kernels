@@ -2,8 +2,6 @@ import runner
 from ray import serve
 from transformers import pipeline
 
-
-@serve.deployment(name="summarize", version="1")
 class Summarize(runner.Runner):
     name = "summarize"
 

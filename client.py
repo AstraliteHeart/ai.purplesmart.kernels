@@ -8,7 +8,8 @@ import socket
 import threading
 import time
 import uuid
-from typing import List
+from typing import List, Optional
+import pickle
 
 import py3nvml
 import ray
@@ -26,7 +27,7 @@ load_dotenv()
 WS_ENDPOINT = os.getenv("WS_ENDPOINT")
 NODE_ID = uuid.getnode()
 HOSTNAME = socket.gethostname()
-KERNEL_ID = uuid.uuid4()
+KERNEL_ID = uuid.uuid4().hex
 
 
 def init(
@@ -54,7 +55,9 @@ def init(
     if conda_env:
         conda_env = ray.serve.CondaEnv(conda_env)
 
-    backend_class.options(
+    deployment = serve.deployment(backend_class)
+
+    deployment.options(
         name=route,
         route_prefix="/" + route,
         ray_actor_options=ray_actor_options,
@@ -75,12 +78,33 @@ def run_in_executor(f):
 
     return inner
 
+def _try_assign_replica(self, query: serve.router.Query) -> Optional[ray.ObjectRef]:
+    """Try to assign query to a replica, return the object ref if succeeded
+    or return None if it can't assign this query to any replicas.
+    """
+    for _ in range(len(self.in_flight_queries.keys())):
+        replica = next(self.replica_iterator)
+        if len(self.in_flight_queries[replica]
+                ) >= self.max_concurrent_queries:
+            # This replica is overloaded, try next one
+            continue
 
-def _try_assign_replica(self, query):
-    raise ValueError("_try_assign_replica")
+        logging.debug(f"Assigned query {query.metadata.request_id} "
+                        f"to replica {replica}.")
+        # Directly passing args because it might contain an ObjectRef.
+        tracker_ref, user_ref = replica.handle_request.remote(
+            pickle.dumps(query.metadata), *query.args, **query.kwargs)
+        self.in_flight_queries[replica].add(tracker_ref)
+
+        actor = ray.get_actor("CounterActor")
+        logging.critical(query.metadata.endpoint)
+        actor.increment.remote(query.metadata.endpoint, replica._actor_id.hex())
+
+        return user_ref
+    return None
 
 
-# serve.router.ReplicaSet._try_assign_replica = _try_assign_replica
+serve.router.ReplicaSet._try_assign_replica = _try_assign_replica
 
 component = Component(
     transports=[
@@ -126,8 +150,9 @@ class Client:
         ray.init(
             num_gpus=len(gpus),
             configure_logging=False,
-            include_dashboard=False,            
-            _redis_max_memory=50 * 1024 * 1024,
+            include_dashboard=False,
+            namespace="ai.purplesmart.kernels",
+            _redis_max_memory=250 * 1024 * 1024,
         )
 
         import counter
@@ -203,7 +228,7 @@ class Client:
 
     def init_ws(self):
         @component.register(
-            f"com.purplesmart.{NODE_ID}.api",
+            f"com.purplesmart.{KERNEL_ID}.api",
         )
         async def api(wamp_request):
             method = wamp_request["method"]

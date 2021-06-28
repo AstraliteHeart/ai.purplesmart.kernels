@@ -1,0 +1,9 @@
+[kernels]
+
+  [[kernels.kernel]]
+    name = "stv.v1.kernel.STV"
+    num_replicas = 1
+    max_concurrent_queries = 4
+
+    [kernels.kernel.resources]
+      gpu = 1.0

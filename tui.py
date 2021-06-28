@@ -131,9 +131,9 @@ class Endpoint:
         yield Columns(
             [
                 Panel.fit(
-                    Backend(backend["used"], backend["available"]),
+                    Backend(backend.used, backend.available),
                     box=box.SQUARE,
-                    title=emojify_device(backend["device"]),
+                    title=emojify_device(backend.device),
                 )
                 for backend in self.backends.values()
             ],
@@ -143,11 +143,11 @@ class Endpoint:
         width = 0
         for backend in self.backends.values():
             panel = Panel.fit(
-                Backend(backend["used"], backend["available"]),
+                Backend(backend.used, backend.available),
                 box=box.SQUARE,
-                title=emojify_device(backend["device"]),
+                title=emojify_device(backend.device),
             )
-            size = measure_renderables(console, [panel], max_width)
+            size = measure_renderables(console, console.options, [panel])
             width += size.minimum
 
         width += len(self.backends) - 1
@@ -169,7 +169,7 @@ class Backend:
         yield text
 
     def __rich_measure__(self, console: Console, max_width: int) -> Measurement:
-        return measure_renderables(console, [Text("⬛" * self.total)], max_width)
+        return measure_renderables(console, console.options, [Text("⬛" * self.total)])
 
 
 class TUI:
@@ -187,31 +187,27 @@ class TUI:
             Layout(name="console", ratio=1),
         )
 
-        self.layout["header"].split(
+        self.layout["header"].split_row(
             Layout(name="logo", size=70),
             Layout(name="info", ratio=1),
-            direction="horizontal",
         )
 
         self.gpu_layout = Layout(name="gpu")
-        self.gpu_layout.split(
+        self.gpu_layout.split_row(
             Layout(name="utilization", ratio=1),
             Layout(name="memory", ratio=1),
-            direction="horizontal",
         )
 
         self.cpu_layout = Layout(name="cpu")
-        self.cpu_layout.split(
+        self.cpu_layout.split_row(
             Layout(name="utilization", ratio=1),
             Layout(name="memory", ratio=1),
-            direction="horizontal",
         )
 
         self.endpoints_layout = Layout(name="cpu")
-        self.endpoints_layout.split(
+        self.endpoints_layout.split_row(
             Layout(name="data", ratio=1),
             Layout(name="graph", ratio=1),
-            direction="horizontal",
         )
 
         py3nvml.nvmlInit()
@@ -303,8 +299,8 @@ class TUI:
                             total_used = 0
                             total_max = 0
                             for entry in endpoint_data.values():
-                                total_used += entry["used"]
-                                total_max += entry["available"]
+                                total_used += entry.used
+                                total_max += entry.available
 
                             max_value = max(max_value, total_max)
 
